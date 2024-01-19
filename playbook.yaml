@@ -57,94 +57,95 @@
 #         dest: /root/cloud-init/ansible_key.pub
 
 
-- name: Setup cloud image
-  hosts: proxmox
-  tasks:
-    - name: Remove old Debian Image
-      file:
-        path: /root/cloud-init/debian-11-generriccloud-amd64.qcow2
-        state: absent
+# - name: Setup cloud image
+#   hosts: proxmox
+#   vars_files:
+#   - env.yml
+#   tasks:
+#     - name: Remove old Debian Image
+#       file:
+#         path: /root/cloud-init/debian-11-generriccloud-amd64.qcow2
+#         state: absent
 
-    - name: Download Debian Image
-      get_url:
-        url: https://cloud.debian.org/images/cloud/bullseye/20240104-1616/debian-11-genericcloud-amd64-20240104-1616.qcow2
-        dest: /root/cloud-init/debian-11-generriccloud-amd64.qcow2
+#     - name: Download Debian Image
+#       get_url:
+#         url: https://cloud.debian.org/images/cloud/bullseye/20240104-1616/debian-11-genericcloud-amd64-20240104-1616.qcow2
+#         dest: /root/cloud-init/debian-11-generriccloud-amd64.qcow2
 
-    - name: Setup Debian Image
-      command: "{{ item }}"
-      loop: 
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --update
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --install ca-certificates,curl,gnupg,qemu-guest-agent
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'useradd --shell /bin/bash -m -p "{ ANSIBLE_PASSWORD }" ansible'
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'mkdir -p /home/ansible/.ssh'
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --ssh-inject ansible:file:/root/cloud-init/ansible_key.pub
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown -R ansible:ansible /home/ansible'
-        # - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --upload /root/cloud-init/ansible:/etc/sudoers.d/ansible
-        # - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chmod 0440 /etc/sudoers.d/ansible'
-        # - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown root:root /etc/sudoers.d/ansible'
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command '>/etc/machine-id'
-        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chage -d 0 ansible'
+#     - name: Setup Debian Image
+#       command: "{{ item }}"
+#       loop: 
+#         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --update
+#         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --install ca-certificates,curl,gnupg,qemu-guest-agent
+#         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'useradd --shell /bin/bash -m -p {{ ANSIBLE_PASSWORD }} ansible'
+#         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'mkdir -p /home/ansible/.ssh'
+#         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --ssh-inject ansible:file:/root/cloud-init/ansible_key.pub
+#         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown -R ansible:ansible /home/ansible'
+#         # - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --upload /root/cloud-init/ansible:/etc/sudoers.d/ansible
+#         # - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chmod 0440 /etc/sudoers.d/ansible'
+#         # - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown root:root /etc/sudoers.d/ansible'
+#         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command '>/etc/machine-id'
 
-- name: Create Debian VMs
-  hosts: proxmox
-  vars_files:
-  - env.yml
-  vars:
-    vm_vars:
-      - {vmid: 100, name: apacheServer}
-      - {vmid: 200, name: loggingServer}
+# - name: Create Debian VMs
+#   hosts: proxmox
+#   vars_files:
+#   - env.yml
+#   vars:
+#     vm_vars:
+#       - {vmid: 100, name: apacheServer}
+#       - {vmid: 200, name: loggingServer}
         
-  tasks:
-    - name: Ensure VM exists
-      proxmox_kvm:
-        node: twilight
-        api_user: "{{ PROXMOX_USER }}"
-        api_password: "{{ PROXMOX_PASSWORD }}"
-        api_host: twilight
-        vmid: "{{ item.vmid }}"
-        name: "{{ item.name }}"
-        memory: 4096
-        cores: 2
-        net:
-          net0: virtio,bridge=vmbr0,firewall=1
-        state: present
-      with_items: "{{ vm_vars }}"
-      register: created_vms
+#   tasks:
+#     - name: Ensure VM exists
+#       proxmox_kvm:
+#         node: twilight
+#         api_user: "{{ PROXMOX_USER }}"
+#         api_password: "{{ PROXMOX_PASSWORD }}"
+#         api_host: twilight
+#         vmid: "{{ item.vmid }}"
+#         name: "{{ item.name }}"
+#         memory: 4096
+#         cores: 2
+#         net:
+#           net0: virtio,bridge=vmbr0,firewall=1
+#         state: present
+#       with_items: "{{ vm_vars }}"
+#       register: created_vms
 
-    - name: Setup VM's if created
-      command: "{{ item.command }}"
-      loop:
-        - { command: 'qm importdisk 100 /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm' }
-        - { command: 'qm importdisk 200 /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm' }
+#     - name: Setup VM's if created
+#       command: "{{ item.command }}"
+#       loop:
+#         - { command: 'qm importdisk 100 /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm' }
+#         - { command: 'qm importdisk 200 /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm' }
 
-        - { command: 'qm set 100 -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-100-disk-0' }
-        - { command: 'qm set 200 -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-200-disk-0' }
+#         - { command: 'qm set 100 -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-100-disk-0' }
+#         - { command: 'qm set 200 -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-200-disk-0' }
 
-        - { command: 'qm set 100 --ide2 local-lvm:cloudinit' }
-        - { command: 'qm set 200 --ide2 local-lvm:cloudinit' }
+#         - { command: 'qm set 100 --ide2 local-lvm:cloudinit' }
+#         - { command: 'qm set 200 --ide2 local-lvm:cloudinit' }
 
-        - { command: 'qm set 100 --boot c --bootdisk scsi0' }
-        - { command: 'qm set 200 --boot c --bootdisk scsi0' }
+#         - { command: 'qm set 100 --boot c --bootdisk scsi0' }
+#         - { command: 'qm set 200 --boot c --bootdisk scsi0' }
 
-        - { command: 'qm set 100 --serial0 socket --vga serial0' }
-        - { command: 'qm set 200 --serial0 socket --vga serial0' }
+#         - { command: 'qm set 100 --serial0 socket --vga serial0' }
+#         - { command: 'qm set 200 --serial0 socket --vga serial0' }
 
-        - { command: 'qm set 100 --ipconfig0 ip=192.168.50.4/16,gw=192.168.50.1' }
-        - { command: 'qm set 200 --ipconfig0 ip=192.168.50.5/16,gw=192.168.50.1' }
+#         - { command: 'qm set 100 --ipconfig0 ip=192.168.50.4/24,gw=192.168.50.1' }
+#         - { command: 'qm set 200 --ipconfig0 ip=192.168.50.5/24,gw=192.168.50.1' }
 
-        - { command: 'qm resize 100 scsi0 +30G' }
-        - { command: 'qm resize 200 scsi0 +30G' }
-      when: created_vms.results | selectattr('changed', 'equalto', true) | list | count > 0
+#         - { command: 'qm resize 100 scsi0 +30G' }
+#         - { command: 'qm resize 200 scsi0 +30G' }
+#       when: created_vms.results | selectattr('changed', 'equalto', true) | list | count > 0
 
-    - name: Start VM
-      proxmox_kvm:
-        node: twilight
-        api_user: "{{ PROXMOX_USER }}"
-        api_password: "{{ PROXMOX_PASSWORD }}"
-        api_host: twilight
-        vmid: "{{ item.vmid }}"
-        state: started
-      with_items: "{{ vm_vars }}"
+#     - name: Start VM
+#       proxmox_kvm:
+#         node: twilight
+#         api_user: "{{ PROXMOX_USER }}"
+#         api_password: "{{ PROXMOX_PASSWORD }}"
+#         api_host: twilight
+#         vmid: "{{ item.vmid }}"
+#         state: started
+#       with_items: "{{ vm_vars }}"
 
     # - name: Set fact for created_vms
     #   set_fact:

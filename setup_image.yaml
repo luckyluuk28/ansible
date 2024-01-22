@@ -1,0 +1,43 @@
+- name: Setup cloud image
+  hosts: proxmox
+  vars_files:
+  - env.yml
+  tasks:
+    - name: Create cloud-init Directory
+      file:
+        path: /root/cloud-init
+        state: directory
+
+    - name: Create Ansible Sudoer file
+      copy:
+        content: 'ansible ALL=(ALL) NOPASSWD: ALL'
+        dest: /root/cloud-init/ansible
+
+    - name: Create SSH key file
+      copy:
+        content: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCwuK8oXohD/woyzodo7kFc7w220VnGi99MvRRmPR4Rqp+FiyomhVfIXzBYWkI8rCR7YK/XV69l5+Zf6toLk5GimBMnZwXkAygWGHJw4PWNPS9cL+6a7bd1uoL9EMTfn/OR9kSCKcXfU4IlzNmKYOyrzZZNAX7btAzHEN23rtQ18HBJuakn7+TsqziGZywLCmRPL8dZNsSqYQ39zMnCGN13gqU+qZassKe/AIGRt1C+qksB7ltVEtDnZwBY8u1Nh3eR6XSi7N/Tw7RHXY+vNSK4rMlaamskNujf7WibjVCvSxB30RGelHEUPEmDl6tB2BD3CtPqnDemk653nHNvHgVscCCyBYcRe2W0FQ26Y4ZNUiL5w0UQBvgKs4p1eIF2axEgI85ZhcrUwg7wCo7JgEa6UyJsOA49/xgj71e5gnkf39pbWjWgy0PmW7Kb/SmYzaKaKuUYOsiqkob0a6SRKZqQfrecinUpRKOgJ7unn59bEp7+Zkm2uAdMj5spKGCUfMU= ansible@raspberrypi"
+        dest: /root/cloud-init/ansible_key.pub
+
+    - name: Remove old Debian Image
+      file:
+        path: /root/cloud-init/debian-11-generriccloud-amd64.qcow2
+        state: absent
+
+    - name: Download Debian Image
+      get_url:
+        url: https://cloud.debian.org/images/cloud/bullseye/20240104-1616/debian-11-genericcloud-amd64-20240104-1616.qcow2
+        dest: /root/cloud-init/debian-11-generriccloud-amd64.qcow2
+
+    - name: Setup Debian Image
+      command: "{{ item }}"
+      loop: 
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --update
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --install ca-certificates,curl,gnupg,qemu-guest-agent
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'useradd --shell /bin/bash -m -p {{ ANSIBLE_PASSWORD }} ansible'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'mkdir -p /home/ansible/.ssh'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --ssh-inject ansible:file:/root/cloud-init/ansible_key.pub
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown -R ansible:ansible /home/ansible'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --upload /root/cloud-init/ansible:/etc/sudoers.d/ansible
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chmod 0440 /etc/sudoers.d/ansible'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown root:root /etc/sudoers.d/ansible'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command '>/etc/machine-id'

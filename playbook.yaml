@@ -86,68 +86,49 @@
 #         # - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown root:root /etc/sudoers.d/ansible'
 #         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command '>/etc/machine-id'
 
-# - name: Create Debian VMs
-#   hosts: proxmox
-#   vars_files:
-#   - env.yml
-#   vars:
-#     vm_vars:
-#       - {vmid: 100, name: apacheServer}
-#       - {vmid: 200, name: loggingServer}
+- name: Create Debian VMs
+  hosts: proxmox
+  vars_files:
+  - env.yml
+  vars:
+    vm_vars:
+      - {vmid: 1000, name: Monitor}
         
-#   tasks:
-#     - name: Ensure VM exists
-#       proxmox_kvm:
-#         node: twilight
-#         api_user: "{{ PROXMOX_USER }}"
-#         api_password: "{{ PROXMOX_PASSWORD }}"
-#         api_host: twilight
-#         vmid: "{{ item.vmid }}"
-#         name: "{{ item.name }}"
-#         memory: 4096
-#         cores: 2
-#         net:
-#           net0: virtio,bridge=vmbr0,firewall=1
-#         state: present
-#       with_items: "{{ vm_vars }}"
-#       register: created_vms
+  tasks:
+    - name: Ensure VM exists
+      proxmox_kvm:
+        node: twilight
+        api_user: "{{ PROXMOX_USER }}"
+        api_password: "{{ PROXMOX_PASSWORD }}"
+        api_host: twilight
+        vmid: "{{ item.vmid }}"
+        name: "{{ item.name }}"
+        memory: 4096
+        cores: 2
+        net:
+          net0: virtio,bridge=vmbr0,firewall=1
+        state: present
+      with_items: "{{ vm_vars }}"
+      register: created_vms
 
-#     - name: Setup VM's if created
-#       command: "{{ item.command }}"
-#       loop:
-#         - { command: 'qm importdisk 100 /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm' }
-#         - { command: 'qm importdisk 200 /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm' }
+    - name: Setup VM's if created
+      command: "{{ item.command }}"
+      loop:
+        - { command: 'qm importdisk 1000 /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm' }
+        - { command: 'qm set 1000 -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-1000-disk-0' }
+        - { command: 'qm set 1000 --ide2 local-lvm:cloudinit' }
+        - { command: 'qm set 1000 --boot c --bootdisk scsi0' }
+        - { command: 'qm set 1000 --serial0 socket --vga serial0' }
+        - { command: 'qm set 1000 --ipconfig0 ip=192.168.50.10/24,gw=192.168.50.2' }
+        - { command: 'qm resize 1000 scsi0 +30G' }
+      when: created_vms.results | selectattr('changed', 'equalto', true) | list | count > 0
 
-#         - { command: 'qm set 100 -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-100-disk-0' }
-#         - { command: 'qm set 200 -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-200-disk-0' }
-
-#         - { command: 'qm set 100 --ide2 local-lvm:cloudinit' }
-#         - { command: 'qm set 200 --ide2 local-lvm:cloudinit' }
-
-#         - { command: 'qm set 100 --boot c --bootdisk scsi0' }
-#         - { command: 'qm set 200 --boot c --bootdisk scsi0' }
-
-#         - { command: 'qm set 100 --serial0 socket --vga serial0' }
-#         - { command: 'qm set 200 --serial0 socket --vga serial0' }
-
-#         - { command: 'qm set 100 --ipconfig0 ip=192.168.50.4/24,gw=192.168.50.1' }
-#         - { command: 'qm set 200 --ipconfig0 ip=192.168.50.5/24,gw=192.168.50.1' }
-
-#         - { command: 'qm resize 100 scsi0 +30G' }
-#         - { command: 'qm resize 200 scsi0 +30G' }
-#       when: created_vms.results | selectattr('changed', 'equalto', true) | list | count > 0
-
-#     - name: Start VM
-#       proxmox_kvm:
-#         node: twilight
-#         api_user: "{{ PROXMOX_USER }}"
-#         api_password: "{{ PROXMOX_PASSWORD }}"
-#         api_host: twilight
-#         vmid: "{{ item.vmid }}"
-#         state: started
-#       with_items: "{{ vm_vars }}"
-
-    # - name: Set fact for created_vms
-    #   set_fact:
-    #     created_vms: "{{ created_vms }}"
-    #   with_items: "{{ groups['vms'] }}"
+    - name: Start VM
+      proxmox_kvm:
+        node: twilight
+        api_user: "{{ PROXMOX_USER }}"
+        api_password: "{{ PROXMOX_PASSWORD }}"
+        api_host: twilight
+        vmid: "{{ item.vmid }}"
+        state: started
+      with_items: "{{ vm_vars }}"

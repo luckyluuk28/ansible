@@ -1,0 +1,78 @@
+- name: Create Wordpress VM
+  hosts: proxmox
+  vars_files:
+  - env.yml
+  vars:
+    vm_var:
+      - {vmid: 1100, name: wordpress, ip: 192.168.50.11}
+        
+  tasks:
+    - name: Delete old VM
+      proxmox_kvm:
+        node: twilight
+        api_user: "{{ PROXMOX_USER }}"
+        api_password: "{{ PROXMOX_PASSWORD }}"
+        api_host: twilight
+        vmid: "{{ item.vmid }}"
+        state: absent
+      with_items: "{{ vm_var }}"
+
+    - name: Create new VM
+      proxmox_kvm:
+        node: twilight
+        api_user: "{{ PROXMOX_USER }}"
+        api_password: "{{ PROXMOX_PASSWORD }}"
+        api_host: twilight
+        vmid: "{{ item.vmid }}"
+        name: "{{ item.name }}"
+        memory: 2048
+        cores: 1
+        net:
+          net0: virtio,bridge=vmbr0,firewall=1
+      with_items: "{{ vm_var }}"
+      
+    - name: Import Disk
+      command: 'qm importdisk {{ item.vmid }} /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm'
+      with_items: "{{ vm_var }}"
+
+    - name: Set scsi
+      command: 'qm set {{ item.vmid }} --scsi0 local-lvm:vm-{{ item.vmid }}-disk-0,size=32G'
+      with_items: "{{ vm_var }}"
+
+    - name: Set ide
+      command: 'qm set {{ item.vmid }} --ide2 local-lvm:cloudinit'
+      with_items: "{{ vm_var }}"
+
+    - name: Configure VM
+      proxmox_kvm:
+        node: twilight
+        api_user: "{{ PROXMOX_USER }}"
+        api_password: "{{ PROXMOX_PASSWORD }}"
+        api_host: twilight
+        vmid: "{{ item.vmid }}"
+        name: "{{ item.name }}"
+        boot: c
+        bootdisk: scsi0
+        scsihw: virtio-scsi-pci
+        serial:
+          serial0: socket
+        vga: serial0
+        ipconfig:
+          ipconfig0: 'ip={{ item.ip }}/24'
+        timeout: 120
+        update: true
+      with_items: "{{ vm_var }}"
+
+    - name: Resize disk
+      command: 'qm resize {{ item.vmid }} scsi0 +30G'
+      with_items: "{{ vm_var }}"
+
+    - name: Start VM
+      proxmox_kvm:
+        node: twilight
+        api_user: "{{ PROXMOX_USER }}"
+        api_password: "{{ PROXMOX_PASSWORD }}"
+        api_host: twilight
+        vmid: "{{ item.vmid }}"
+        state: started
+      with_items: "{{ vm_var }}"

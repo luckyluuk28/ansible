@@ -23,7 +23,7 @@
       rescue:
         - name: Handle errors
           debug:
-            msg: "An error occurred while processing the file."
+            msg: "An error occurred while processing adding proxmox no-subscription source."
     
     - name: Update APT cache
       apt:

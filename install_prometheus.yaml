@@ -1,0 +1,86 @@
+- name: Install and Configure Prometheus with Custom Configuration
+  hosts: monitor
+  become: yes  # Use sudo for privilege escalation
+
+  tasks:
+    - name: Update packages
+      apt:
+        update_cache: yes
+
+    - name: Install Prometheus
+      apt:
+        name:
+          - prometheus
+          - prometheus-blackbox-exporter
+          - pipx
+        state: present
+
+    - name: Create Prometheus configuration directory
+      file:
+        path: /etc/prometheus
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create Prometheus configuration file
+      copy:
+        content: |
+          global:
+            scrape_interval: 15s
+
+          scrape_configs:
+            - job_name: 'node_exporter'
+              static_configs:
+                - targets: [
+                    {% for host in groups['node_exporter'] %}
+                      '{{ host }}:9100',
+                    {% endfor %}
+                  ]
+              tls_config:
+                insecure_skip_verify: true
+
+            - job_name: 'blackbox'
+              metrics_path: /probe
+              params:
+                module: [http_2xx]  # Look for a HTTP 200 response.
+              static_configs:
+                - targets:
+                  - http://localhost:9090 # Target to probe with http on port 8080.
+                  - http://localhost:3000
+              relabel_configs:
+                - source_labels: [__address__]
+                  target_label: __param_target
+                - source_labels: [__param_target]
+                  target_label: instance
+                - target_label: __address__
+                  replacement: 127.0.0.1:9115  # The blackbox exporter's real hostname:port.
+            - job_name: 'blackbox_exporter'  # collect blackbox exporter's operational metrics.
+              static_configs:
+                - targets: ['127.0.0.1:9115']
+
+            # Global exporter-level metrics
+            - job_name: 'snmp_exporter'
+              static_configs:
+                - targets: ['localhost:9116'] 
+
+        dest: /etc/prometheus/prometheus.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart Prometheus
+
+    # - name: Ensure pipx path
+    #   command: pipx ensurepath
+    #   become_user: "{{ ansible_user }}"
+
+    - name: Enable Prometheus service
+      systemd:
+        name: prometheus
+        enabled: yes
+
+  handlers:
+    - name: Restart Prometheus
+      systemd:
+        name: prometheus
+        state: restarted

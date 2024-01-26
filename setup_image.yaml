@@ -41,3 +41,8 @@
         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chmod 0440 /etc/sudoers.d/ansible'
         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'chown root:root /etc/sudoers.d/ansible'
         - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command '>/etc/machine-id'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'sed -i -e "s/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/" /etc/locale.gen'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'ln -sf /usr/share/zoneinfo/Europe/Amsterdam /etc/localtime'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'hwclock --systohc'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'locale-gen en_US.UTF-8'
+        - virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --run-command 'update-locale LANG=en_US.UTF-8'

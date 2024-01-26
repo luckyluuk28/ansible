@@ -1,0 +1,36 @@
+- name: Establish connection
+  hosts: node_exporter
+  gather_facts: no
+  tasks:
+    - name: Disable host key checking
+      set_fact:
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+      run_once: true
+
+    - name: Gather Facts
+      setup:
+
+    - name: Enable host key checking
+      set_fact:
+        ansible_ssh_common_args: ""
+      run_once: true
+
+- name: Install Prometheus Node Exporter
+  hosts: node_exporter
+  become: yes
+  tasks:
+    - name: Install Node Exporter with apt
+      apt:
+        name: prometheus-node-exporter
+        state: present
+        update_cache: yes
+
+    - name: Set a custom fact indicating Node Exporter is installed
+      set_fact:
+        node_exporter_installed: true
+
+    - name: Enable and start the Prometheus Node Exporter service
+      service:
+        name: prometheus-node-exporter
+        enabled: yes
+        state: started

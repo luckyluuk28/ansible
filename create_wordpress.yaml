@@ -4,7 +4,7 @@
   - env.yml
   vars:
     vm_var:
-      - {vmid: 1100, name: wordpress, ip: 192.168.50.11}
+      - {vmid: 1100, name: wordpress, mac: 6A:30:AD:C8:C3:EE, ip: 192.168.50.11}
         
   tasks:
     - name: Delete old VM
@@ -28,7 +28,7 @@
         memory: 2048
         cores: 1
         net:
-          net0: virtio=6A:30:AD:C8:C3:EE,bridge=vmbr0,firewall=1
+          net0: virtio={{ item.mac }},bridge=vmbr0,firewall=1
       with_items: "{{ vm_var }}"
       
     - name: Import Disk

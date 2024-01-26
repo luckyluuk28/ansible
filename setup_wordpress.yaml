@@ -60,7 +60,6 @@
       pip:
         name: 
           - pymysql
-          - pexpect
 
     - name: Install and Configure WordPress
       block:

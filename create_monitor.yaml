@@ -4,7 +4,7 @@
   - env.yml
   vars:
     vm_var:
-      - {vmid: 1000, name: monitor, ip: 192.168.50.10}
+      - {vmid: 1000, name: monitor, mac: 8E:63:11:B4:2C:DB, ip: 192.168.50.10}
   tasks:
     - name: Delete old VM
       proxmox_kvm:
@@ -27,7 +27,7 @@
         memory: 4096
         cores: 2
         net:
-          net0: virtio=8E:63:11:B4:2C:DB,bridge=vmbr0,firewall=1
+          net0: virtio={{ item.mac }},bridge=vmbr0,firewall=1
       with_items: "{{ vm_var }}"
       
     - name: Import Disk
@@ -52,10 +52,6 @@
         name: "{{ item.name }}"
         boot: c
         bootdisk: scsi0
-        # ide:
-        #   ide2: local-lvm:cloudinit
-        # scsi:
-        #   scsi0: local-lvm:vm-{{ item.vmid }}-disk-0,size=32G
         scsihw: virtio-scsi-pci
         serial:
           serial0: socket
@@ -64,6 +60,10 @@
           ipconfig0: 'ip={{ item.ip }}/24,gw=192.168.50.2'
         timeout: 120
         update: true
+      with_items: "{{ vm_var }}"
+
+    - name: Resize disk
+      command: 'qm resize {{ item.vmid }} scsi0 +30G'
       with_items: "{{ vm_var }}"
 
     - name: Start VM

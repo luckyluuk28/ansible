@@ -1,0 +1,28 @@
+proxmox:
+    hosts:
+        192.168.50.2 
+    vars:
+        ansible_user: root
+
+monitor:
+    hosts: 
+        192.168.50.10
+    vars:
+        ansible_user: ansible
+wordpress:
+    hosts: 
+        192.168.50.11
+    vars:
+        ansible_user: ansible
+
+docker:
+    hosts: 
+        192.168.50.12
+    vars:
+        ansible_user: ansible
+
+node_exporter:
+    children:
+        monitor:
+        wordpress:
+        docker:

@@ -1,4 +1,4 @@
-- name: Update (or Setup) Proxmox
+- name: Setup Proxmox
   hosts: proxmox
   tasks:
     - name: Ensure ability to update (with no subscription)
@@ -45,8 +45,3 @@
           - proxmoxer
           - requests
         state: present 
-
-- name: Update self
-  hosts: localhost
-  tasks:
-    

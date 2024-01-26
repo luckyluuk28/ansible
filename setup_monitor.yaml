@@ -1,5 +1,5 @@
 - name: Establish connection
-  hosts: docker
+  hosts: monitor
   gather_facts: no
   tasks:
     - name: Disable host key checking
@@ -27,7 +27,7 @@
       run_once: true
 
 - name: Setup Docker
-  hosts: docker
+  hosts: monitor
   become: yes
   tasks:
     - name: Update APT cache
@@ -64,23 +64,6 @@
           apt:
             update_cache: yes
 
-        - name: Install extra packages
-          apt:
-            name:
-              - docker-ce
-              - docker-ce-cli
-              - containerd.io
-              - docker-buildx-plugin
-              - docker-compose-plugin
-            state: present
-
-        - name: Start the Docker service
-          service:
-            name: docker
-            state: started
-
-        - name: Download and install Docker Composer
-          shell: |
-            curl -SL "https://github.com/docker/compose/releases/download/v2.22.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose
-          when: docker_gpg_key.changed # Assume it only needs to be installed if docker needs to be installed
+# mkdir -p /etc/apt/keyrings/
+# wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
+# echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | tee /etc/apt/sources.list.d/grafana.list

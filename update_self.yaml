@@ -1,0 +1,16 @@
+- name: Update self
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Update packages and kernel
+      apt:
+        update_cache: yes
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+        force_apt_get: yes
+
+    - name: Reboot box if kernel/libs updated and requested by the system
+      command: sleep 10 && /sbin/shutdown -r now 'Rebooting box to update system libs/kernel as needed' 
+      args:
+          removes: /var/run/reboot-required

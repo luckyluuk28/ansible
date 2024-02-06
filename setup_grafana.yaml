@@ -33,6 +33,7 @@
       command: > 
         curl -X POST -u admin:admin -H "Content-Type: application/json" -d '{"name": "Prometheus", "type": "prometheus", "url": "http://localhost:9090", "access": "proxy", "isDefault": true}' http://localhost:3000/api/datasources
 
+# Original node-exporter-full.json from: https://github.com/rfmoz/grafana-dashboards 
     - name: Upload Prometheus Dashboard using curl
       command: >
         curl -X POST -u admin:admin -H "Content-Type: application/json" --data-binary @/home/ansible/ansible/import_dashboard.json http://localhost:3000/api/dashboards/import

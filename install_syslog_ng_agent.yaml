@@ -1,0 +1,22 @@
+- name: Install and configure Syslog-NG
+  hosts: logger
+  become: true
+  tasks:
+    - name: Install syslog-ng
+      apt:
+        name: syslog-ng
+        state: present
+
+    - name: Configure syslog-ng
+      lineinfile:
+        path: /etc/syslog-ng/syslog-ng.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^#destination d_net { tcp("127.0.0.1" port(1000) log_fifo_size(1000)); };', line: 'destination d_net { tcp("192.168.50.10" port(514) log_fifo_size(1000)); };' }
+        - { regexp: '^#log { source(s_src); destination(d_net); };', line: 'log { source(s_src); destination(d_net); };' }
+
+    - name: Restart syslog-ng service
+      service:
+        name: syslog-ng
+        state: restarted

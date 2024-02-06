@@ -1,21 +1,37 @@
 - name: Create Docker VM
   hosts: proxmox
   vars_files:
-  - env.yml
+  - ./env.yml
   vars:
-    vm_var:
-      - {vmid: 1200, name: docker, mac: EA:8C:51:F1:33:E8, ip: 192.168.50.12}
-        
+    vmconf: {
+      vmid: 1200,
+      name: docker,
+      mac: EA:8C:51:F1:33:E8,
+      ip: 192.168.50.12,
+      cores: 2,
+      memory: 4096,
+      image: debian-11-generriccloud-amd64.qcow2,
+      onboot: false
+    }
   tasks:
+    - name: Set default network configuration if MAC
+      set_fact:
+        network_config: "virtio={{ vmconf.mac }},bridge=vmbr0,firewall=1"
+      when: vmconf.mac is defined
+
+    - name: Set default network configuration if no MAC
+      set_fact:
+        network_config: "bridge=vmbr0,firewall=1"
+      when: vmconf.mac is not defined
+
     - name: Delete old VM
       proxmox_kvm:
         node: twilight
         api_user: "{{ PROXMOX_USER }}"
         api_password: "{{ PROXMOX_PASSWORD }}"
         api_host: twilight
-        vmid: "{{ item.vmid }}"
+        vmid: "{{ vmconf.vmid }}"
         state: absent
-      with_items: "{{ vm_var }}"
 
     - name: Create new VM
       proxmox_kvm:
@@ -23,25 +39,22 @@
         api_user: "{{ PROXMOX_USER }}"
         api_password: "{{ PROXMOX_PASSWORD }}"
         api_host: twilight
-        vmid: "{{ item.vmid }}"
-        name: "{{ item.name }}"
-        memory: 4096
-        cores: 2
+        vmid: "{{ vmconf.vmid }}"
+        name: "{{ vmconf.name }}"
+        memory: "{{ vmconf.memory }}"
+        cores: "{{ vmconf.cores }}"
         net:
-          net0: virtio={{ item.mac }},bridge=vmbr0,firewall=1
-      with_items: "{{ vm_var }}"
+          net0: "{{ network_config }}"
+        onboot: "{{ vmconf.onboot }}"
       
     - name: Import Disk
-      command: 'qm importdisk {{ item.vmid }} /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm'
-      with_items: "{{ vm_var }}"
+      command: 'qm importdisk {{ vmconf.vmid }} /root/cloud-init/debian-11-generriccloud-amd64.qcow2 local-lvm'
 
     - name: Set scsi
-      command: 'qm set {{ item.vmid }} --scsi0 local-lvm:vm-{{ item.vmid }}-disk-0,size=32G'
-      with_items: "{{ vm_var }}"
+      command: 'qm set {{ vmconf.vmid }} --scsi0 local-lvm:vm-{{ vmconf.vmid }}-disk-0,size=32G'
 
     - name: Set ide
-      command: 'qm set {{ item.vmid }} --ide2 local-lvm:cloudinit'
-      with_items: "{{ vm_var }}"
+      command: 'qm set {{ vmconf.vmid }} --ide2 local-lvm:cloudinit'
 
     - name: Configure VM
       proxmox_kvm:
@@ -49,8 +62,7 @@
         api_user: "{{ PROXMOX_USER }}"
         api_password: "{{ PROXMOX_PASSWORD }}"
         api_host: twilight
-        vmid: "{{ item.vmid }}"
-        name: "{{ item.name }}"
+        vmid: "{{ vmconf.vmid }}"
         boot: c
         bootdisk: scsi0
         scsihw: virtio-scsi-pci
@@ -58,14 +70,12 @@
           serial0: socket
         vga: serial0
         ipconfig:
-          ipconfig0: 'ip={{ item.ip }}/24,gw=192.168.50.2'
+          ipconfig0: 'ip={{ vmconf.ip }}/24,gw=192.168.50.2'
         timeout: 120
         update: true
-      with_items: "{{ vm_var }}"
 
     - name: Resize disk
-      command: 'qm resize {{ item.vmid }} scsi0 +30G'
-      with_items: "{{ vm_var }}"
+      command: 'qm resize {{ vmconf.vmid }} scsi0 +30G'
 
     - name: Start VM
       proxmox_kvm:
@@ -73,6 +83,5 @@
         api_user: "{{ PROXMOX_USER }}"
         api_password: "{{ PROXMOX_PASSWORD }}"
         api_host: twilight
-        vmid: "{{ item.vmid }}"
+        vmid: "{{ vmconf.vmid }}"
         state: started
-      with_items: "{{ vm_var }}"

@@ -1,0 +1,34 @@
+- name: Setup SSH
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Disable host key checking
+      set_fact:
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+      run_once: true
+
+# - import_playbook: destroy_old.yaml
+
+# get's done in playbook.yaml
+# - import_playbook: setup_proxmox.yaml
+# - import_playbook: setup_image.yaml
+
+- import_playbook: create_wordpress.yaml
+- import_playbook: create_docker.yaml
+
+- import_playbook: install_node_exporter.yaml
+- import_playbook: install_syslog_ng_agent.yaml
+
+- import_playbook: setup_wordpress.yaml
+- import_playbook: setup_docker.yaml
+
+# - import_playbook: update_self.yaml
+
+- name: Enable host checking
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Enable host key checking
+      set_fact:
+        ansible_ssh_common_args: ""
+      run_once: true

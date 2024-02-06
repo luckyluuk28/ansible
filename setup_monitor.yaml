@@ -26,6 +26,87 @@
         ansible_ssh_common_args: ""
       run_once: true
 
-- import_playbook: install_prometheus.yaml
-- import_playbook: install_node_exporter.yaml
 - import_playbook: install_grafana.yaml
+- import_playbook: install_prometheus.yaml
+- import_playbook: setup_grafana.yaml
+# - import_playbook: install_elk.yaml
+- import_playbook: install_syslog_ng_server.yaml
+
+- name: Install Ansible
+  hosts: monitor
+  become: yes
+  tasks:
+    - name: Install Python and Pip
+      apt:
+        name:
+          - python3
+          - python3-pip
+
+    - name: Install Ansible
+      pip:
+        name: ansible
+        state: present
+
+    - name: Create ansible directory
+      file:
+        path: /home/ansible/ansible
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: 0755
+
+    - name: Copy files to /home/ansible/ansible on target host
+      copy:
+        src: ~/ansible/
+        dest: /home/ansible/ansible
+        owner: ansible
+        group: ansible
+        mode: 0644
+
+- name: Setup SSH
+  hosts: monitor
+  become: yes
+  tasks:
+    - name: Generate a new SSH keypair
+      openssh_keypair:
+        path: "~/.ssh/id_rsa"
+        type: rsa
+        size: 2048
+        state: present
+        force: yes
+      become_user: ansible
+
+    - name: Change permission to keep SSH private
+      file:
+        path: /home/ansible/.ssh/id_rsa
+        mode: '0600'
+
+    - name: Register public key
+      slurp:
+        src: /home/ansible/.ssh/id_rsa.pub
+      register: public_key
+
+    - set_fact:
+        public_key: "{{ public_key.content | b64decode | string }}"
+
+- hosts: proxmox
+  gather_facts: true
+  become: yes
+  vars:
+    public_key: "{{ hostvars['192.168.50.10']['public_key'] }}" 
+  tasks:
+    - name: Copy SSH key to target machine
+      copy:
+        content: "{{ public_key }}"
+        dest: /root/cloud-init/monitor_key.pub
+        force: yes
+
+    - name: Add public key to authorized keys
+      authorized_key:
+        user: root
+        key: "{{ public_key }}"
+        path: /root/.ssh/authorized_keys
+
+    - name: Setup Debian Image
+      command: >
+        virt-customize -a /root/cloud-init/debian-11-generriccloud-amd64.qcow2 --ssh-inject ansible:file:/root/cloud-init/monitor_key.pub

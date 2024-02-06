@@ -1,0 +1,120 @@
+- name: Install and configure ELK Stack
+  hosts: monitor
+  become: true
+  tasks:
+    # - name: Add Elasticsearch GPG key
+    #   shell: "curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elastic.gpg"
+
+    - name: Add Elasticsearch APT repository
+      shell: "echo 'deb [signed-by=/usr/share/keyrings/elastic.gpg] https://artifacts.elastic.co/packages/7.x/apt stable main' | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list"
+
+    - name: Update repository
+      apt:
+        update_cache: yes
+
+    - name: Install Elasticsearch
+      apt:
+        name: elasticsearch
+        state: present
+
+    - name: Configure Elasticsearch
+      lineinfile:
+        path: /etc/elasticsearch/elasticsearch.yml
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.replace }}"
+      with_items:
+        - { regexp: '^#network.host:', replace: 'network.host: localhost' }
+        - { regexp: '^#http.port:', replace: 'http.port: 9200' }
+        - { regexp: '^#discovery.seed_hosts:', replace: 'discovery.seed_hosts: ["localhost", "192.168.50.0/24"]' }
+
+    - name: Start Elasticsearch
+      systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+    - name: Install Kibana
+      apt:
+        name: kibana
+        state: present
+
+    - name: Configure Kibana
+      lineinfile:
+        path: /etc/kibana/kibana.yml
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.replace }}"
+      with_items:
+        - { regexp: '^#server.port:', replace: 'server.port: 5601' }
+        - { regexp: '^#server.host:', replace: 'server.host: "0.0.0.0"' }
+        - { regexp: '^#elasticsearch.hosts:', replace: 'elasticsearch.hosts: ["http://localhost:9200"]' }
+
+    - name: Start Kibana
+      systemd:
+        name: kibana
+        state: started
+        enabled: yes
+
+    - name: Install Logstash
+      apt:
+        name: logstash
+        state: present
+
+    - name: Configure Logstash input
+      copy:
+        content: |
+          input {
+            beats {
+              port => "5044"
+            }
+          }
+        dest: /etc/logstash/conf.d/02-beats-input.conf
+
+    - name: Configure Logstash output
+      copy:
+        content: |
+          output {
+            if [@metadata][pipeline] {
+              elasticsearch {
+                hosts => ['localhost:9200']
+                manage_template => false
+                index => '%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}'
+                pipeline => '%{[@metadata][pipeline]}'
+              }
+            } else {
+              elasticsearch {
+                hosts => ['localhost:9200']
+                manage_template => false
+                index => '%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}'
+              }
+            }
+          }
+        dest: /etc/logstash/conf.d/30-elasticsearch-output.conf
+
+    - name: Start Logstash
+      systemd:
+        name: logstash
+        state: started
+        enabled: yes
+
+# sudo apt install filebeat
+
+
+# /etc/filebeat/filebeat.yml
+# output.elasticsearch:  
+# #output.elasticsearch:
+
+# hosts: ["localhost:9200"]
+# #hosts: ["192.168.50.10:9200"]
+
+# #output.logstash:
+# output.logstash:
+
+#   #hosts: ["localhost:5044"]
+#   hosts: ["192.168.50.10:5044"]
+
+# sudo filebeat modules enable system
+# sudo filebeat setup --pipelines --modules system
+# sudo filebeat setup --index-management -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["192.168.50.10:9200"]'
+# sudo filebeat setup -E output.logstash.enabled=false -E output.elasticsearch.hosts=['192.168.50.10:9200'] -E setup.kibana.host=192.168.50.10:5601
+
+# sudo service filebeat start

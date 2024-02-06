@@ -7,6 +7,17 @@
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
       run_once: true
 
+    - name: Wait for connection
+      wait_for_connection:
+
+    - name: Wait for cloud init to finish
+      cloud_init_data_facts:
+        filter: status
+      register: cloud_init_result
+      until: "cloud_init_result.cloud_init_data_facts.status.v1.stage is defined and not cloud_init_result.cloud_init_data_facts.status.v1.stage"
+      retries: 20
+      delay: 15
+
     - name: Gather Facts
       setup:
 

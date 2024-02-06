@@ -1,0 +1,28 @@
+- name: Install and configure Syslog-NG
+  hosts: monitor
+  become: true
+  tasks:
+    - name: Install syslog-ng
+      apt:
+        name: syslog-ng
+        state: present
+
+    - name: Configure syslog-ng
+      lineinfile:
+        path: /etc/syslog-ng/syslog-ng.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: "^#source s_net { tcp(ip(127.0.0.1) port(1000)); };", line: "source s_net { tcp(ip(0.0.0.0) port(514)); };" }
+        - { regexp: "^#log { source(s_src); destination(d_net); };", line: "log { source(s_net); destination(recieved_logs); };" }
+
+    - name: Add new destination for centralized logs
+      lineinfile:
+        path: /etc/syslog-ng/syslog-ng.conf
+        line: "destination recieved_logs { file(\"/var/log/centralized/$HOST/$YEAR-$MONTH-$DAY.log\" create_dirs(yes)); };" 
+        insertbefore: "^# Debian only"
+
+    - name: Restart syslog-ng service
+      service:
+        name: syslog-ng
+        state: restarted

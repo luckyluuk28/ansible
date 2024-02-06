@@ -1,19 +1,21 @@
-- name: "Create Monitor VM"
+- name: "Create VM"
   hosts: proxmox
   vars_files:
   - ./env.yml
-  vars:
-    vmconf: {
-      vmid: 1000,
-      name: monitor,
-      mac: 8E:63:11:B4:2C:DB,
-      ip: 192.168.50.10,
-      cores: 2,
-      memory: 4096,
-      image: debian-11-generriccloud-amd64.qcow2,
-      onboot: false
-    }
   tasks:
+    - name: Set default values for vmconf
+      set_fact:
+        vmconf:
+          vmid: "{{ vmconf.vmid | mandatory }}"
+          name: "{{ vmconf.name | mandatory }}" 
+          ip: "{{ vmconf.ip | mandatory }}" 
+          image: "{{ vmconf.image | mandatory }}" 
+
+          memory: "{{ vmconf.memory | default(1024) }}"
+          cores: "{{ vmconf.cores | default(1) }}"
+          onboot: "{{ vmconf.onboot | default(false) }}" 
+          mac: "{{ vmconf.mac }}" 
+
     - name: Set default network configuration if MAC
       set_fact:
         network_config: "virtio={{ vmconf.mac }},bridge=vmbr0,firewall=1"

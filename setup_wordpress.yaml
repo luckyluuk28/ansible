@@ -195,3 +195,14 @@
       service:
         name: apache2
         state: restarted
+
+    - name: Download WP-CLI
+      get_url:
+        url: https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+        dest: /usr/local/bin/wp
+        mode: '0755'
+
+    - name: Run WP-CLI core install
+      command: >
+        wp core install --url='http://192.168.50.11' --title='Cool Wordpress Site' --admin_user='admin' --admin_password='admin' --admin_email='admin@example.com' --path='/srv/www/wordpress/'
+      become: no

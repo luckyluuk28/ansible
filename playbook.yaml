@@ -13,12 +13,16 @@
 - import_playbook: setup_image.yaml
 
 - import_playbook: create_monitor.yaml
-- import_playbook: create_docker.yaml
-- import_playbook: create_wordpress.yaml
-
 - import_playbook: setup_monitor.yaml
-- import_playbook: setup_docker.yaml
-- import_playbook: setup_wordpress.yaml
+
+# - import_playbook: create_docker.yaml
+# - import_playbook: create_wordpress.yaml
+
+# - import_playbook: install_node_exporter.yaml
+# - import_playbook: install_syslog_ng_agent.yaml
+
+# - import_playbook: setup_docker.yaml
+# - import_playbook: setup_wordpress.yaml
 
 # - import_playbook: update_self.yaml
 
